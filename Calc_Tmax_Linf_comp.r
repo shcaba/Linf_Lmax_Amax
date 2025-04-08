@@ -8,7 +8,7 @@ library(FSA)
 library(EnvStats)
 library(reshape2)
 library(viridis)
-source()
+library(dplyr)
 ### Functions ###
 VBGF<-function(Linf, k, t0, ages){ 
   Lts<-Linf * (1 - exp(-k * (ages - t0)))
@@ -112,9 +112,12 @@ Linf_plots<-function(Linf_Lmax_ratios)
 #############
 
 #Upload VBGF and tmax values from FishBase
+#These are only the species confirmed to have growth estiamtes 
 fb.spp.parms<-read.csv("C:/Users/Jason.Cope/Documents/Current Action/Publications/tmax vs Linf/Fishbase_spp_names.csv")
+#This command would pull all fish in FishBase
+#fb.spp.parms<-all_fish()
 
-#Use species names from FishBase that have growth parameters and extract Linf, K, and tmax values using FishLIfe. 
+#Use species names from FishBase that have growth parameters and extract Linf, K, and tmax values using FishLife. 
 #Add t0 = 0 values too.
 VBGF.fb.out<-data.frame(Species=NA,Linf=NA,K=NA,tmax=NA,t0=0)
 for(i in 1:length(fb.spp.parms$Species))
@@ -126,9 +129,9 @@ for(i in 1:length(fb.spp.parms$Species))
 #Calculate the Lt value at tmax
 VBGF.fb.out$Linf_tmax<-as.numeric(VBGF.fb.out$Linf)*(1-exp(-as.numeric(VBGF.fb.out$K)*(as.numeric(VBGF.fb.out$tmax)-as.numeric(VBGF.fb.out$t0))))
 #Calculate the ratio of Linf to L_tmax
-VBGF.fb.out$Linf__Linf_tmax<-as.numeric(VBGF.fb.out$Linf)/VBGF.fb.out$Linf_tmax
+VBGF.fb.out$Linf_tmax_Linf<-VBGF.fb.out$Linf_tmax/as.numeric(VBGF.fb.out$Linf)
 #Remove the NAs
-VBGF.fb.out_noNA<-VBGF.fb.out[ !is.na(VBGF.fb.out$Linf__Linf_tmax),]
+VBGF.fb.out_noNA<-VBGF.fb.out[ !is.na(VBGF.fb.out$Linf_tmax_Linf),]
 #Convert the rest of the inputs to numeric
 VBGF.fb.out_noNA$Linf<-as.numeric(VBGF.fb.out_noNA$Linf)
 VBGF.fb.out_noNA$K<-as.numeric(VBGF.fb.out_noNA$K)
@@ -150,37 +153,52 @@ save(Lmax.spp.mean,file="C:/Users/Jason.Cope/Documents/Current Action/Publicatio
 #Merge the vbgf and lmax objects
 VBGF_tmax_Lmax<-merge(VBGF.fb.out_noNA,Lmax.spp.mean,by="Species")
 VBGF_tmax_Lmax<-merge(VBGF_tmax_Lmax,Lmax.spp.max,by="Species")
-VBGF_tmax_Lmax$Linf_Lmax<-VBGF_tmax_Lmax$Linf/VBGF_tmax_Lmax$Lmax
+VBGF_tmax_Lmax$Lmax_Linf<-VBGF_tmax_Lmax$Lmax/VBGF_tmax_Lmax$Linf
 VBGF_tmax_Lmax$Linflect<-VBGF_tmax_Lmax$Linf*(8/27)
 save(VBGF_tmax_Lmax,file="C:/Users/Jason.Cope/Documents/Current Action/Publications/tmax vs Linf/VBGF_tmax_Lmax.rds")
 load("C:/Users/Jason.Cope/Documents/Current Action/Publications/tmax vs Linf/VBGF_tmax_Lmax.rds")
 
 #Plots to compare different parameter to Linf:L_Amax
-ggplot(VBGF_tmax_Lmax,aes(Linf__Linf_tmax,Linf))+
-    geom_point()+
-    geom_vline(xintercept=1, color="red")
+#ggplot(VBGF_tmax_Lmax,aes(Linf__Linf_tmax,Linf))+
+#    geom_point()+
+#    geom_vline(xintercept=1, color="red")
 
-ggplot(VBGF_tmax_Lmax,aes(Linf__Linf_tmax,K))+
-    geom_point()
+#ggplot(VBGF_tmax_Lmax,aes(Linf_tmax_Linf,K))+
+#    geom_point()
 
-ggplot(VBGF_tmax_Lmax,aes(Linf__Linf_tmax,tmax))+
-    geom_point()
+#ggplot(VBGF_tmax_Lmax,aes(Linf_tmax_Linf,tmax))+
+#    geom_point()
 
 #Compare to Lmax
-ggplot(VBGF_tmax_Lmax,aes(Linf_Lmax,Linf))+
+#ggplot(VBGF_tmax_Lmax,aes(Linf_Lmax,Linf))+
+#    geom_point()+
+#    geom_vline(xintercept=1, color="red")
+
+#ggplot(VBGF_tmax_Lmax,aes(Linf_Lmax,Linflect))+
+#  geom_point()+
+#  geom_vline(xintercept=1, color="red")
+
+
+ggplot(VBGF_tmax_Lmax,aes(Lmax_Linf,Linf_tmax_Linf))+
     geom_point()+
-    geom_vline(xintercept=1, color="red")
+    geom_hline(yintercept=c(0.9,0.95,1),color=c("red","red","blue"))+
+    geom_vline(xintercept=c(0.9,1),color=c("red","blue"))+
+    xlim(0,2)+
+    ylim(0,2)+
+    xlab("Lmax:Linf")+
+    ylab("Lt@Tmax:Linf")
 
-ggplot(VBGF_tmax_Lmax,aes(Linf_Lmax,Linflect))+
-  geom_point()+
-  geom_vline(xintercept=1, color="red")
+ggplot(VBGF_tmax_Lmax,aes(Lmax_Linf))+
+  geom_density(lwd=2)+
+  xlim(0,2.5)+
+  geom_vline(xintercept=c(median(VBGF_tmax_Lmax$Lmax_Linf),0.9), color=c("blue","red"),linetype = c("longdash","solid"))+
+  xlab("Lmax:Linf")
 
-
-ggplot(VBGF_tmax_Lmax,aes(Linf_Lmax,Linf__Linf_tmax))+
-    geom_point()+
-    geom_hline(yintercept=1.1,color="red")+
-    geom_vline(xintercept=1, color="red")+
-    xlim(0,2)
+ggplot(VBGF_tmax_Lmax,aes(Linf_tmax_Linf))+
+  geom_density(lwd=2)+
+  xlim(0.6,1.1)+
+  geom_vline(xintercept=c(median(VBGF_tmax_Lmax$Linf_tmax_Linf),0.9,0.95,1), color=c("blue","red","red","red"),linetype = c("longdash","solid","solid","solid"),lwd=c(0.5,0.5,0.5,1.25))+
+  xlab("Lt@Tmax:Linf")
 
 
 #Calculate ratio categories
@@ -189,22 +207,32 @@ ggplot(VBGF_tmax_Lmax,aes(Linf_Lmax,Linf__Linf_tmax))+
 #Linf vs Amax; Linf>Lmax BAD LINF
 #Linf vs Amax; Linf<Lmax Good
 
-Linf_Amax_ratio<-1.1
-Linf_Lmax_ratio<-1
-ratio.cat<-c(dim(VBGF_tmax_Lmax[VBGF_tmax_Lmax$Linf__Linf_tmax>Linf_Amax_ratio & VBGF_tmax_Lmax$Linf_Lmax>Linf_Lmax_ratio,])[1],
-dim(VBGF_tmax_Lmax[VBGF_tmax_Lmax$Linf__Linf_tmax>Linf_Amax_ratio & VBGF_tmax_Lmax$Linf_Lmax<Linf_Lmax_ratio,])[1],
-dim(VBGF_tmax_Lmax[VBGF_tmax_Lmax$Linf__Linf_tmax<Linf_Amax_ratio & VBGF_tmax_Lmax$Linf_Lmax>Linf_Lmax_ratio,])[1],
-dim(VBGF_tmax_Lmax[VBGF_tmax_Lmax$Linf__Linf_tmax<Linf_Amax_ratio & VBGF_tmax_Lmax$Linf_Lmax<Linf_Lmax_ratio,])[1])
+Linf_Amax_ratio_hi<-0.99
+Lmax_Linf_ratio_low<-0.9
+
+#ratio.cat<-c(dim(VBGF_tmax_Lmax[VBGF_tmax_Lmax$Linf_tmax_Linf<Linf_Amax_ratio & VBGF_tmax_Lmax$Lmax_Linf<Lmax_Linf_ratio_low])[1],
+#dim(VBGF_tmax_Lmax[VBGF_tmax_Lmax$Linf__Linf_tmax>Linf_Amax_ratio & VBGF_tmax_Lmax$Linf_Lmax<Linf_Lmax_ratio,])[1],
+#dim(VBGF_tmax_Lmax[VBGF_tmax_Lmax$Linf__Linf_tmax<Linf_Amax_ratio & VBGF_tmax_Lmax$Linf_Lmax>Linf_Lmax_ratio,])[1],
+#dim(VBGF_tmax_Lmax[VBGF_tmax_Lmax$Linf__Linf_tmax<Linf_Amax_ratio & VBGF_tmax_Lmax$Linf_Lmax<Linf_Lmax_ratio,])[1])
+
+#Linf to Amax
+dim(VBGF_tmax_Lmax[VBGF_tmax_Lmax$Linf_tmax_Linf<Linf_Amax_ratio_hi,])[1]/dim(VBGF_tmax_Lmax)[1]
+#Linf to Lmax
+dim(VBGF_tmax_Lmax[VBGF_tmax_Lmax$Lmax_Linf<Lmax_Linf_ratio_low,])[1]/dim(VBGF_tmax_Lmax)[1]
+
+#Linf to Amax and Lmax
+dim(VBGF_tmax_Lmax[VBGF_tmax_Lmax$Linf_tmax_Linf<Linf_Amax_ratio_hi&VBGF_tmax_Lmax$Lmax_Linf<Lmax_Linf_ratio_low,])[1]/dim(VBGF_tmax_Lmax)[1]
+
 
 ratio_Linfs<-ratio.cat/sum(ratio.cat)
-names(ratio_Linfs)<-c("Linf>LAmax_Lmax","Linf>LAmax","Linf>Lmax","Linf<LAmax_Lmax")
+names(ratio_Linfs)<-c("Linf_ratio>LAmax_Lmax","Linf>LAmax","Linf>Lmax","Linf<LAmax_Lmax")
 
 ratio_Linfs_combo<-c(sum(ratio.cat[c(1,3)]),ratio.cat[2],ratio.cat[4])/sum(ratio.cat)
 names(ratio_Linfs_combo)<-c("Linf>LAmax_Lmax_Lmax","Linf>LAmax","Linf<LAmax_Lmax")
 
 Lmax_less<-VBGF_tmax_Lmax[VBGF_tmax_Lmax$Linf__Linf_tmax>Linf_Amax_ratio & VBGF_tmax_Lmax$Linf_Lmax>Linf_Lmax_ratio,]
 
-
+#############################################################
 
 Linf.in<-50
 K.in<-0.1
@@ -280,7 +308,33 @@ ggplot(age.lt.dat,aes(Ages,Lengths,colour = Sample))+
   scale_colour_manual(values = c("red"))+
   theme_bw()+
   geom_function(fun = function(x) Linf.in * (1 - exp(-K.in * (x - t0.in))), colour = "black",lwd=1.25)+
-  geom_function(fun = function(x) vbgf.parms.all$m$getPars()[1] * (1 - exp(-vbgf.parms.all$m$getPars()[2] * (x - vbgf.parms.all$m$getPars()[3]))), colour = c("red"),lwd=1.25)
+  geom_function(fun = function(x) vbgf.parms.all$m$getPars()[1] * (1 - exp(-vbgf.parms.all$m$getPars()[2] * (x - vbgf.parms.all$m$getPars()[3]))), colour = c("red"),lwd=1.25)+
+  xlim(0,50)  
+
+#Example with only 30 as maximum age
+Linf.in<-60
+M<-0.05
+K.in<-M/1.5
+t0.in<--1
+CV.in<-0.1
+
+lowage<-0.1
+maxage<-30
+maxlt<-100
+
+ages.full.30<-rlnormTrunc(1000, meanlog = log(Amax.in), sdlog = 1, min = lowage,max = maxage)
+rand.lts.full.30<-rand.VBGF(Linf.in,K.in,t0.in,ages.full,CV.in)
+age.lt.dat.30<-data.frame(Ages=round(ages.full.30,0),Lengths=round(rand.lts.full.30,0),Sample="Full")
+
+ggplot(age.lt.dat.30,aes(Ages,Lengths))+
+  geom_point()+
+  scale_colour_manual(values = c("red"))+
+  theme_bw()+
+  geom_function(fun = function(x) Linf.in * (1 - exp(-K.in * (x - t0.in))), colour = "black",lwd=1.25)+
+  #  geom_function(fun = function(x) vbgf.parms.all$m$getPars()[1] * (1 - exp(-vbgf.parms.all$m$getPars()[2] * (x - vbgf.parms.all$m$getPars()[3]))), colour = c("red"),lwd=1.25)+
+  xlim(0,50)  
+
+
 #Fitting A50%
 ggplot(subset(age.lt.dat.all,Sample %in% c("Full",paste0("Age ",round(maxage*0.5,0)))),aes(Ages,Lengths,colour = Sample))+
   geom_point()+
@@ -333,23 +387,29 @@ ggplot(age.lt.dat.comp.Alow,aes(Ages,Lengths,colour = Sample))+
 ###################
 
 Linf.in<-60
-M<-0.2
+M<-0.1
 K.in.05<-M/0.5
 K.in.1.5<-M/1.5
 K.in.2<-M/2
 t0.in<--1
 CV.in<-0.1
+CV.in20<-0.1
 
 lowage<-0.1
 maxage<-5.4/M
-maxage<-5.4/M/2
-maxlt<-Linf.in*0.9
+maxage.50<-5.4/M/2
+maxage.25<-5.4/M/5
 maxlt<-100
+maxlt.90<-Linf.in*0.9
 
 #M/k=0.5
 Linf_Lmax_ratios_Mk05.N100<-Comp.Lmax.Linf(n=100,Nsim=500,Linf.in=Linf.in,K.in=K.in.05,t0.in=t0.in,CV.in=CV.in,Amax.in=Amax.in,lowage=lowage,maxage=maxage,maxlt)
 Linf_Lmax_ratios_Mk05.N200<-Comp.Lmax.Linf(n=200,Nsim=500,Linf.in=Linf.in,K.in=K.in.05,t0.in=t0.in,CV.in=CV.in,Amax.in=Amax.in,lowage=lowage,maxage=maxage,maxlt)
 Linf_Lmax_ratios_Mk05.N500<-Comp.Lmax.Linf(n=500,Nsim=500,Linf.in=Linf.in,K.in=K.in.05,t0.in=t0.in,CV.in=CV.in,Amax.in=Amax.in,lowage=lowage,maxage=maxage,maxlt)
+Linf_Lmax_ratios_Mk05.N200_90Linf<-Comp.Lmax.Linf(n=200,Nsim=500,Linf.in=Linf.in,K.in=K.in.05,t0.in=t0.in,CV.in=CV.in,Amax.in=Amax.in,lowage=lowage,maxage=maxage,maxlt.90)
+Linf_Lmax_ratios_Mk05.N200_50Amax<-Comp.Lmax.Linf(n=200,Nsim=500,Linf.in=Linf.in,K.in=K.in.05,t0.in=t0.in,CV.in=CV.in,Amax.in=Amax.in,lowage=lowage,maxage=maxage.50,maxlt)
+Linf_Lmax_ratios_Mk05.N200_90Linf_50Amax<-Comp.Lmax.Linf(n=200,Nsim=500,Linf.in=Linf.in,K.in=K.in.05,t0.in=t0.in,CV.in=CV.in,Amax.in=Amax.in,lowage=lowage,maxage=maxage.50,maxlt.90)
+Linf_Lmax_ratios_Mk05.N200_25Amax<-Comp.Lmax.Linf(n=200,Nsim=500,Linf.in=Linf.in,K.in=K.in.05,t0.in=t0.in,CV.in=CV.in20,Amax.in=Amax.in,lowage=lowage,maxage=maxage.25,maxlt)
 ratios100<-data.frame(Ratio=Linf_Lmax_ratios_Mk05.N100[,3],Label="Mk_05_N100")
 ratios200<-data.frame(Ratio=Linf_Lmax_ratios_Mk05.N200[,3],Label="Mk_05_N200")
 ratios500<-data.frame(Ratio=Linf_Lmax_ratios_Mk05.N500[,3],Label="Mk_05_N500")
@@ -361,10 +421,20 @@ ggplot(gg_Linf_ratios,aes(Ratio,color=Label))+
 
 #M/k=1.5
 Linf_Lmax_ratios_Mk15<-Comp.Lmax.Linf(n=200,Nsim=500,Linf.in=Linf.in,K.in=K.in.1.5,t0.in=t0.in,CV.in=CV.in,Amax.in=Amax.in,lowage=lowage,maxage=maxage,maxlt)
+Linf_Lmax_ratios_Mk15_90Linf<-Comp.Lmax.Linf(n=200,Nsim=500,Linf.in=Linf.in,K.in=K.in.1.5,t0.in=t0.in,CV.in=CV.in,Amax.in=Amax.in,lowage=lowage,maxage=maxage,maxlt.90)
+Linf_Lmax_ratios_Mk15_50Amax<-Comp.Lmax.Linf(n=200,Nsim=500,Linf.in=Linf.in,K.in=K.in.1.5,t0.in=t0.in,CV.in=CV.in,Amax.in=Amax.in,lowage=lowage,maxage=maxage.50,maxlt)
+Linf_Lmax_ratios_Mk15_50Amax_90Linf<-Comp.Lmax.Linf(n=200,Nsim=500,Linf.in=Linf.in,K.in=K.in.1.5,t0.in=t0.in,CV.in=CV.in,Amax.in=Amax.in,lowage=lowage,maxage=maxage.50,maxlt.90)
+Linf_Lmax_ratios_Mk15_25Amax<-Comp.Lmax.Linf(n=200,Nsim=500,Linf.in=Linf.in,K.in=K.in.1.5,t0.in=t0.in,CV.in=CV.in20,Amax.in=Amax.in,lowage=lowage,maxage=maxage.25,maxlt)
 
 #M/k=2.5
 Linf_Lmax_ratios_Mk20<-Comp.Lmax.Linf(n=200,Nsim=500,Linf.in=Linf.in,K.in=K.in.2,t0.in=t0.in,CV.in=CV.in,Amax.in=Amax.in,lowage=lowage,maxage=maxage,maxlt)
+Linf_Lmax_ratios_Mk20_90Linf<-Comp.Lmax.Linf(n=200,Nsim=500,Linf.in=Linf.in,K.in=K.in.2,t0.in=t0.in,CV.in=CV.in,Amax.in=Amax.in,lowage=lowage,maxage=maxage,maxlt.90)
+Linf_Lmax_ratios_Mk20_50Amax<-Comp.Lmax.Linf(n=200,Nsim=500,Linf.in=Linf.in,K.in=K.in.2,t0.in=t0.in,CV.in=CV.in,Amax.in=Amax.in,lowage=lowage,maxage=maxage.50,maxlt)
+Linf_Lmax_ratios_Mk20_50Amax_90Linf<-Comp.Lmax.Linf(n=200,Nsim=500,Linf.in=Linf.in,K.in=K.in.2,t0.in=t0.in,CV.in=CV.in,Amax.in=Amax.in,lowage=lowage,maxage=maxage.50,maxlt.90)
+Linf_Lmax_ratios_Mk20_25Amax<-Comp.Lmax.Linf(n=200,Nsim=500,Linf.in=Linf.in,K.in=K.in.2,t0.in=t0.in,CV.in=CV.in20,Amax.in=Amax.in,lowage=lowage,maxage=maxage.25,maxlt)
 
+
+#Full sampling
 ratiosmk05<-data.frame(Ratio=Linf_Lmax_ratios_Mk05.N200[,3],Label="Mk_0.5")
 ratiosmk15<-data.frame(Ratio=Linf_Lmax_ratios_Mk15[,3],Label="Mk_1.5")
 ratiosmk20<-data.frame(Ratio=Linf_Lmax_ratios_Mk20[,3],Label="Mk_2")
@@ -373,6 +443,57 @@ ggplot(gg_Linf_ratios,aes(Ratio,color=Label))+
   geom_density(lwd=2)+
   geom_vline(xintercept=c(1), color="red")+
   xlim(0,2)
+
+#90% Linf
+ratiosmk05_90Linf<-data.frame(Ratio=Linf_Lmax_ratios_Mk05.N200_90Linf[,3],Label="Mk_0.5")
+ratiosmk15_90Linf<-data.frame(Ratio=Linf_Lmax_ratios_Mk15_90Linf[,3],Label="Mk_1.5")
+ratiosmk20_90Linf<-data.frame(Ratio=Linf_Lmax_ratios_Mk20_90Linf[,3],Label="Mk_2")
+gg_Linf_ratios_90Linf<-rbind(ratiosmk05_90Linf,ratiosmk15_90Linf,ratiosmk20_90Linf)
+ggplot(gg_Linf_ratios_90Linf,aes(Ratio,color=Label))+ 
+  geom_density(lwd=2)+
+  geom_vline(xintercept=c(1), color="red")+
+  xlim(0,2)
+
+#50% Amax
+ratiosmk05_50Amax<-data.frame(Ratio=Linf_Lmax_ratios_Mk05.N200_50Amax[,3],Label="Mk_0.5")
+ratiosmk15_50Amax<-data.frame(Ratio=Linf_Lmax_ratios_Mk15_50Amax[,3],Label="Mk_1.5")
+ratiosmk20_50Amax<-data.frame(Ratio=Linf_Lmax_ratios_Mk20_50Amax[,3],Label="Mk_2")
+gg_Linf_ratios_50Amax<-rbind(ratiosmk05_50Amax,ratiosmk15_50Amax,ratiosmk20_50Amax)
+ggplot(gg_Linf_ratios_50Amax,aes(Ratio,color=Label))+ 
+  geom_density(lwd=2)+
+  geom_vline(xintercept=c(1), color="red")+
+  xlim(0,2)
+
+#90% Linf, 50% Amax
+ratiosmk05_50Amax_90Linf<-data.frame(Ratio=Linf_Lmax_ratios_Mk05.N200_90Linf_50Amax[,3],Label="Mk_0.5")
+ratiosmk15_50Amax_90Linf<-data.frame(Ratio=Linf_Lmax_ratios_Mk15_50Amax_90Linf[,3],Label="Mk_1.5")
+ratiosmk20_50Amax_90Linf<-data.frame(Ratio=Linf_Lmax_ratios_Mk20_50Amax_90Linf[,3],Label="Mk_2")
+gg_Linf_ratios_50Amax_90Linf<-rbind(ratiosmk05_50Amax_90Linf,ratiosmk15_50Amax_90Linf,ratiosmk20_50Amax_90Linf)
+ggplot(gg_Linf_ratios_50Amax_90Linf,aes(Ratio,color=Label))+ 
+  geom_density(lwd=2)+
+  geom_vline(xintercept=c(1), color="red")+
+  xlim(0,2)
+
+#20% Amax
+ratiosmk05_25Amax<-data.frame(Ratio=Linf_Lmax_ratios_Mk05.N200_25Amax[,3],Label="Mk_0.5")
+ratiosmk15_25Amax<-data.frame(Ratio=Linf_Lmax_ratios_Mk15_25Amax[,3],Label="Mk_1.5")
+ratiosmk20_25Amax<-data.frame(Ratio=Linf_Lmax_ratios_Mk20_25Amax[,3],Label="Mk_2")
+gg_Linf_ratios_25Amax<-rbind(ratiosmk05_25Amax,ratiosmk15_25Amax,ratiosmk20_25Amax)
+ggplot(gg_Linf_ratios_25Amax,aes(Ratio,color=Label))+ 
+  geom_density(lwd=2)+
+  geom_vline(xintercept=c(1), color="red")+
+  xlim(0,2)
+
+#3 indicator plots
+Linf_Lmax_plots(Linf_Lmax_ratios_Mk05.N200) #3-plot N200, m/k=0.5
+Linf_Lmax_plots(Linf_Lmax_ratios_Mk15) #3-plot N200, m/k=1.5
+Linf_Lmax_plots(Linf_Lmax_ratios_Mk15_90Linf) #3-plot N200, m/k=1.5 90Linf
+Linf_Lmax_plots(Linf_Lmax_ratios_Mk15_50Amax) #3-plot N200, m/k=1.5 50Linf
+Linf_Lmax_plots(Linf_Lmax_ratios_Mk15_50Amax_90Linf) #3-plot N200, m/k=1.5 50Linf
+Linf_Lmax_plots(Linf_Lmax_ratios_Mk20_50Amax_90Linf) #3-plot N200, m/k=1.5 50Linf
+Linf_Lmax_plots(Linf_Lmax_ratios_Mk20_25Amax) #3-plot N200, m/k=1.5 20%Amax
+
+
 
 
 Linf_plots(Linf_Lmax_ratios)
